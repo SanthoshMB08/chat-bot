@@ -5,3 +5,4 @@ bcrypt
 numpy
 sqlite-utils
 groq
+supabase

@@ -7,12 +7,12 @@ from streamlit_cookies_manager import CookieManager
 
 
 
-# ---------------- COOKIE MANAGER ----------------
+#  COOKIE SETUP FOR LOGIN 
 cookies = CookieManager(prefix="ai_chat_app")
 if not cookies.ready():
     st.stop()
 
-# ---------------- SESSION STATE ----------------
+#  CHECKING SESSION STATE
 if "cookies_saved" not in st.session_state:
     st.session_state.cookies_saved = False
 
@@ -34,10 +34,10 @@ if "user_id" in cookies and not is_valid_uuid(cookies["user_id"]):
         cookies.save()
         st.session_state.cookies_saved = True
     st.session_state.user_id = None
-# ---------------- AUTH UI ----------------
+# LOGIN/SINGH UP  UI
 if st.session_state.user_id is None:
     
-    st.title("🔐 AI Chat Login")
+    st.title("YELLOW Login")
 
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
@@ -77,15 +77,15 @@ if st.session_state.user_id is None:
 
     st.stop()
 print("User ID in session:", st.session_state.user_id)
-# -------------- SIDEBAR: PROJECTS + CHATS -------------
-st.sidebar.title("🧠 Workspace")
+#  SIDEBAR: PROJECTS + CHATS 
+st.sidebar.title(" Workspace")
 
 projects = get_projects(st.session_state.user_id)
 
 for pid, pname in projects:
     colp1, colp2 = st.sidebar.columns([8, 1])
 
-    if colp1.button(f"📁 {pname}", key=f"proj-{pid}"):
+    if colp1.button(f" {pname}", key=f"proj-{pid}"):
         st.session_state.project_id = pid
         st.session_state.chat_id = None
         st.rerun()
@@ -109,7 +109,7 @@ for pid, pname in projects:
             cid, ctitle = row["id"], row["title"]
             c1, c2 = st.sidebar.columns([8, 1])
 
-            if c1.button(f"   💬 {ctitle}", key=f"chat-{pid}-{cid}"):
+            if c1.button(f"    {ctitle}", key=f"chat-{pid}-{cid}"):
                 st.session_state.chat_id = cid
                 st.rerun()
 
@@ -120,7 +120,7 @@ for pid, pname in projects:
                     st.session_state.chat_id = None
                 st.rerun()
 
-        if st.sidebar.button("➕ New Chat", key=f"new-chat-{pid}"):
+        if st.sidebar.button("+ New Chat", key=f"new-chat-{pid}"):
             cur = supabase.table("chats").insert({
                 "user_id": st.session_state.user_id,
                 "project_id": pid,
@@ -131,7 +131,7 @@ for pid, pname in projects:
 
     st.sidebar.markdown("---")
 
-st.sidebar.subheader("➕ New Project")
+st.sidebar.subheader("+ New Project")
 new_project = st.sidebar.text_input("Project name")
 if st.sidebar.button("Create Project"):
     if new_project:
@@ -139,15 +139,13 @@ if st.sidebar.button("Create Project"):
         st.session_state.project_id = pid
         st.session_state.chat_id = None
         st.rerun()
+#LOGOUT BUTTON
+if st.sidebar.button(" Logout"):
 
-if st.sidebar.button("🚪 Logout"):
 
-    # Clear only your app's keys
     for key in ["user_id", "project_id", "chat_id", "cookies_saved"]:
         if key in st.session_state:
             del st.session_state[key]
-
-    # Clear cookie
     cookies["user_id"] = ""
 
     if not st.session_state.get("cookies_saved", False):
@@ -155,7 +153,7 @@ if st.sidebar.button("🚪 Logout"):
         st.session_state.cookies_saved = True
 
     st.rerun()
-# ---------- MAIN CHAT UI ----------------
+# MAIN CHAT UI 
 if st.session_state.chat_id is None:
     st.info("Select a chat from the sidebar or create a new one!")
     st.stop()

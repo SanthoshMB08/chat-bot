@@ -1,7 +1,7 @@
 from supabase_client import supabase
 import uuid
 def signup(email, password):
-    # enforce your own password rule
+    # Basic validation
     if len(password) < 8:
         return None, "Password must be at least 8 characters long"
 
@@ -15,7 +15,7 @@ def signup(email, password):
         else:
             return None, "Signup failed"
     except Exception as e:
-        # catch Supabase Auth errors
+        # Auth errors
         return None, str(e)
 
 

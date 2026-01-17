@@ -1,5 +1,5 @@
 streamlit
-openai
+streamlit-cookies-manager
 python-dotenv
 bcrypt
 numpy

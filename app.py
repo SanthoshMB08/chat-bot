@@ -1,23 +1,39 @@
 import streamlit as st
 from database import conn, init_db
 from project import create_project, get_projects
-# ---------- INIT DB ----------
+from auth import login, signup
+from chat import send_message, get_messages
+from streamlit_cookies_manager import EncryptedCookieManager
+
+# -------------- INIT DB ----------------
 init_db()
 
-# ---------- SESSION STATE ----------
-if "user_id" not in st.session_state:
-    st.session_state.user_id = None
 
-if "chat_id" not in st.session_state:
-    st.session_state.chat_id = None
+# ---------------- COOKIE MANAGER ----------------
+cookies = EncryptedCookieManager(
+    prefix="ai_chat_app",   # unique prefix for your app
+    password="supersecret"  # change this to a strong secret
+)
+
+if not cookies.ready():
+    st.stop()
+
+# ---------------- SESSION STATE ----------------
+if "user_id" not in st.session_state:
+    # try to restore from cookie
+    if "user_id" in cookies:
+        st.session_state.user_id = int(cookies["user_id"])
+    else:
+        st.session_state.user_id = None
+
 if "project_id" not in st.session_state:
     st.session_state.project_id = None
 
-# ---------- AUTH ----------
-from auth import login, signup
-from chat import send_message, get_messages
+if "chat_id" not in st.session_state:
+    st.session_state.chat_id = None
 
-# ---------- AUTH UI ----------
+
+# ---------------- AUTH UI ----------------
 if st.session_state.user_id is None:
     st.title("🔐 AI Chat Login")
 
@@ -26,11 +42,12 @@ if st.session_state.user_id is None:
     with tab1:
         email = st.text_input("Email")
         password = st.text_input("Password", type="password")
-
         if st.button("Login"):
             uid = login(email, password)
             if uid:
                 st.session_state.user_id = uid
+                cookies["user_id"] = str(uid)   # save to cookie
+                cookies.save()
                 st.rerun()
             else:
                 st.error("Invalid credentials")
@@ -38,86 +55,78 @@ if st.session_state.user_id is None:
     with tab2:
         email = st.text_input("Email", key="s_email")
         password = st.text_input("Password", type="password", key="s_pass")
-
         if st.button("Signup"):
             uid = signup(email, password)
             if uid:
                 st.session_state.user_id = uid
+                cookies["user_id"] = str(uid)   # save to cookie
+                cookies.save()
                 st.rerun()
             else:
                 st.error("User already exists")
 
     st.stop()
 
-# ---------- DARK MODE ----------
-dark = st.sidebar.toggle("🌙 Dark mode")
-
-if dark:
-    st.markdown("""
-    <style>
-    body { background:#0f172a; color:white }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ---------- SIDEBAR ----------
-st.sidebar.title("💬 Chats")
-
-if st.sidebar.button("+ New Chat"):
-    cur = conn.execute(
-        "INSERT INTO chats (user_id, title) VALUES (?, ?)",
-        (st.session_state.user_id, "New Chat")
-    )
-    st.session_state.chat_id = cur.lastrowid
-    conn.commit()
-    st.rerun()
-
-    # ---------- LOAD CHAT LIST ----------
-chats = conn.execute(
-    "SELECT id, title FROM chats WHERE user_id=? ORDER BY id DESC",
-    (st.session_state.user_id,)
-).fetchall()
-
-if not chats:
-    cur = conn.execute(
-        "INSERT INTO chats (user_id, title) VALUES (?, ?)",
-        (st.session_state.user_id, "New Chat")
-    )
-    st.session_state.chat_id = cur.lastrowid
-    conn.commit()
-else:
-    if st.session_state.chat_id is None:
-        st.session_state.chat_id = chats[0][0]
-
-for cid, title in chats:
-    if st.sidebar.button(title, key=f"chat-{cid}"):
-        st.session_state.chat_id = cid
-        st.rerun()
+# -------------- SIDEBAR: PROJECTS + CHATS -------------
 st.sidebar.title("🧠 Workspace")
 
+# -- Projects
 projects = get_projects(st.session_state.user_id)
 
 for pid, pname in projects:
 
-    # ---------- PROJECT HEADER ----------
-    if st.sidebar.button(f"📁 {pname}", key=f"proj-{pid}"):
+    # project header + delete
+    colp1, colp2 = st.sidebar.columns([8, 1])
+
+    if colp1.button(f"📁 {pname}", key=f"proj-{pid}"):
         st.session_state.project_id = pid
         st.session_state.chat_id = None
         st.rerun()
 
-    # ---------- SHOW CHATS ONLY FOR ACTIVE PROJECT ----------
+    if colp2.button("🗑", key=f"del-proj-{pid}"):
+        # delete all messages in all chats in this project
+        conn.execute("""
+            DELETE FROM messages 
+            WHERE chat_id IN (SELECT id FROM chats WHERE project_id=?)
+        """, (pid,))
+
+        conn.execute("DELETE FROM chats WHERE project_id=?", (pid,))
+        conn.execute("DELETE FROM projects WHERE id=?", (pid,))
+        conn.commit()
+
+        if st.session_state.project_id == pid:
+            st.session_state.project_id = None
+            st.session_state.chat_id = None
+
+        st.rerun()
+
+    # only show chats when project is active
     if st.session_state.project_id == pid:
 
-        chats = conn.execute(
+        # fetch chats for this project
+        chat_rows = conn.execute(
             "SELECT id, title FROM chats WHERE project_id=? ORDER BY id DESC",
             (pid,)
         ).fetchall()
 
-        for cid, title in chats:
-            if st.sidebar.button(f"   💬 {title}", key=f"chat-{pid}-{cid}-project"):
+        for cid, ctitle in chat_rows:
+            c1, c2 = st.sidebar.columns([8, 1])
+
+            if c1.button(f"   💬 {ctitle}", key=f"chat-{pid}-{cid}"):
                 st.session_state.chat_id = cid
                 st.rerun()
 
-        # ---------- NEW CHAT UNDER PROJECT ----------
+            if c2.button("🗑", key=f"del-chat-{pid}-{cid}"):
+                conn.execute("DELETE FROM messages WHERE chat_id=?", (cid,))
+                conn.execute("DELETE FROM chats WHERE id=?", (cid,))
+                conn.commit()
+
+                if st.session_state.chat_id == cid:
+                    st.session_state.chat_id = None
+
+                st.rerun()
+
+        # new chat inside this project
         if st.sidebar.button("➕ New Chat", key=f"new-chat-{pid}"):
             cur = conn.execute(
                 "INSERT INTO chats (user_id, project_id, title) VALUES (?, ?, ?)",
@@ -129,30 +138,32 @@ for pid, pname in projects:
 
     st.sidebar.markdown("---")
 
-# ---------- CREATE NEW PROJECT ----------
+# add new project UI
 st.sidebar.subheader("➕ New Project")
-
 new_project = st.sidebar.text_input("Project name")
-
 if st.sidebar.button("Create Project"):
     if new_project:
         pid = create_project(st.session_state.user_id, new_project)
         st.session_state.project_id = pid
         st.session_state.chat_id = None
         st.rerun()
-
-
-# ---------- LOGOUT ----------
+# logout button
 if st.sidebar.button("🚪 Logout"):
-    st.session_state.user_id = None
-    st.session_state.chat_id = None
+    st.session_state.clear()
+    cookies["user_id"] = ""   # clear cookie
+    cookies.save()
     st.rerun()
 
-# ---------- CHAT UI ----------
+
+# ---------- MAIN CHAT UI ----------------
+# ensure chat_id exists before showing
+if st.session_state.chat_id is None:
+    st.info("Select a chat from the sidebar or create a new one!")
+    st.stop()
+
 st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
 
 messages = get_messages(st.session_state.chat_id)
-
 for role, content in messages:
     css_class = "user" if role == "user" else "assistant"
     st.markdown(
@@ -162,10 +173,9 @@ for role, content in messages:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-
-# ---------- INPUT ----------
+# ---------- INPUT BOX -------------
 with st.form("chat_form", clear_on_submit=True):
-    user_input = st.text_input("Message")
+    user_input = st.text_input("Message", key="input")
     send = st.form_submit_button("Send")
 
 if send and user_input:

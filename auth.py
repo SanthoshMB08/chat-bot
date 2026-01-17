@@ -1,31 +1,35 @@
-import bcrypt
-from database import conn
-
+from supabase_client import supabase
+import uuid
 def signup(email, password):
-    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    # enforce your own password rule
+    if len(password) < 8:
+        return None, "Password must be at least 8 characters long"
 
     try:
-        cur = conn.execute(
-            "INSERT INTO users (email, password) VALUES (?, ?)",
-            (email, hashed)
-        )
-        conn.commit()
-        return cur.lastrowid
-    except:
-        return None
+        result = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+        if result.user:
+            return result.user.id, None
+        else:
+            return None, "Signup failed"
+    except Exception as e:
+        # catch Supabase Auth errors
+        return None, str(e)
+
 
 def login(email, password):
-    user = conn.execute(
-        "SELECT id, password FROM users WHERE email=?",
-        (email,)
-    ).fetchone()
-
-    if not user:
-        return None
-
-    user_id, hashed = user
-
-    if bcrypt.checkpw(password.encode(), hashed):
-        return user_id
-
+    result = supabase.auth.sign_in_with_password({"email": email, "password": password})
+    if result.user:
+        return result.user.id
     return None
+def reset_password(email):
+    supabase.auth.reset_password_email(email)
+def is_valid_uuid(val):
+    try:
+        uuid.UUID(str(val))
+        return True
+    except ValueError:
+        return False
+

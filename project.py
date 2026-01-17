@@ -1,15 +1,13 @@
-from database import conn
+from supabase_client import supabase
 
 def create_project(user_id, name, description=""):
-    cur = conn.execute(
-        "INSERT INTO projects (user_id, name, description) VALUES (?, ?, ?)",
-        (user_id, name, description)
-    )
-    conn.commit()
-    return cur.lastrowid
+    result = supabase.table("projects").insert({
+        "user_id": user_id,
+        "name": name,
+        "description": description
+    }).execute()
+    return result.data[0]["id"]
 
 def get_projects(user_id):
-    return conn.execute(
-        "SELECT id, name FROM projects WHERE user_id=? ORDER BY id DESC",
-        (user_id,)
-    ).fetchall()
+    result = supabase.table("projects").select("id, name").eq("user_id", user_id).order("id", desc=True).execute()
+    return [(row["id"], row["name"]) for row in result.data]

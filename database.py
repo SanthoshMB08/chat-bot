@@ -1,55 +1,9 @@
-import sqlite3
+from supabase_client import supabase
 
-conn = sqlite3.connect("chat.db", check_same_thread=False)
+def create_project(user_id, name):
+    result = supabase.table("projects").insert({"user_id": user_id, "name": name}).execute()
+    return result.data[0]["id"]
 
-def init_db():
-    cur = conn.cursor()
-
-    # USERS
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
-    )
-    """)
-
-    # PROJECTS
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        name TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # CHATS (INITIAL)
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        title TEXT DEFAULT 'New Chat',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    # ADD project_id COLUMN IF MISSING
-    cur.execute("PRAGMA table_info(chats)")
-    columns = [col[1] for col in cur.fetchall()]
-
-    if "project_id" not in columns:
-        cur.execute("ALTER TABLE chats ADD COLUMN project_id INTEGER")
-
-    # MESSAGES
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_id INTEGER NOT NULL,
-        role TEXT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-    """)
-
-    conn.commit()
+def get_projects(user_id):
+    result = supabase.table("projects").select("id, name").eq("user_id", user_id).execute()
+    return [(row["id"], row["name"]) for row in result.data]

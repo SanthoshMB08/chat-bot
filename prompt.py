@@ -1,14 +1,12 @@
-from database import conn
+from supabase_client import supabase
 
 def add_prompt(project_id, title, content):
-    conn.execute(
-        "INSERT INTO prompts (project_id, title, content) VALUES (?, ?, ?)",
-        (project_id, title, content)
-    )
-    conn.commit()
+    supabase.table("prompts").insert({
+        "project_id": project_id,
+        "title": title,
+        "content": content
+    }).execute()
 
 def get_prompts(project_id):
-    return conn.execute(
-        "SELECT title, content FROM prompts WHERE project_id=?",
-        (project_id,)
-    ).fetchall()
+    result = supabase.table("prompts").select("title, content").eq("project_id", project_id).execute()
+    return [(row["title"], row["content"]) for row in result.data]

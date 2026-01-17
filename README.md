@@ -60,7 +60,7 @@ streamlit run app.py
 - Create a new app → select your repo, branch, and entrypoint (app.py).
 - Add secrets in Settings → Secrets.
 - Your app will be live at https://<your-app>.streamlit.app.
-
+live demo https://yellow-ai.streamlit.app/
 📂 Project Structure
 chat-bot/
 │── app.py              # Main Streamlit app

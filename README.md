@@ -77,8 +77,3 @@ chat-bot/
 
 
 
-- Performance: RAG ensures contextual responses with low latency.
-- Reliability: Error handling in auth, DB, and API calls.
-
-✨ This README gives you a professional, assignment‑ready document.
-👉 Do you want me to also draft a short architecture diagram (ASCII or Markdown) to visually show how Supabase, Streamlit, and Groq connect? That would strengthen your deliverables.

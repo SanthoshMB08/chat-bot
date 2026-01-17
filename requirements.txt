@@ -6,3 +6,4 @@ numpy
 sqlite-utils
 groq
 supabase
+scikit-learn

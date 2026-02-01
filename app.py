@@ -35,6 +35,8 @@ if "user_id" in cookies and not is_valid_uuid(cookies["user_id"]):
         st.session_state.cookies_saved = True
     st.session_state.user_id = None
 # LOGIN/SINGH UP  UI
+if "signup_success" not in st.session_state:
+    st.session_state.signup_success = False
 if st.session_state.user_id is None:
     
     st.title("YELLOW Login")
@@ -42,6 +44,10 @@ if st.session_state.user_id is None:
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
     with tab1:
+        if st.session_state.signup_success:
+            st.success("✅ Verify your account from the email sent to your mail")
+            st.session_state.signup_success = False
+
         email = st.text_input("Email")
         password = st.text_input("Password", type="password")
         if st.button("Login"):
@@ -69,6 +75,7 @@ if st.session_state.user_id is None:
                 if not st.session_state.cookies_saved:
                     cookies.save()
                     st.session_state.cookies_saved = True
+                st.session_state.signup_success = True
                 st.rerun()
             else:
                 st.error(err or "User already exists")

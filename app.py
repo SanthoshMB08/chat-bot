@@ -34,53 +34,46 @@ if "user_id" in cookies and not is_valid_uuid(cookies["user_id"]):
         cookies.save()
         st.session_state.cookies_saved = True
     st.session_state.user_id = None
-# LOGIN/SINGH UP  UI
+
+# LOGIN/SIGNUP UI
 if "signup_success" not in st.session_state:
     st.session_state.signup_success = False
+
 if st.session_state.user_id is None:
-    
     st.title("YELLOW Login")
 
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
     with tab1:
         if st.session_state.signup_success:
-            st.success("✅ Verify your account from the email sent to your mail")
+            st.success("✅ Verification email has been sent to your email. Please verify your account before logging in.")
             st.session_state.signup_success = False
-
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        if st.button("Login"):
-            uid = login(email, password)
-            if uid:
-                st.session_state.user_id = uid
-                cookies["user_id"] = uid
-                if not st.session_state.cookies_saved:
-                    cookies.save()
-                    st.session_state.cookies_saved = True
-                st.rerun()
-            else:
-                st.error("Invalid credentials")
+        else:
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            if st.button("Login"):
+                uid = login(email, password)
+                if uid:
+                    st.session_state.user_id = uid
+                    cookies["user_id"] = uid
+                    if not st.session_state.cookies_saved:
+                        cookies.save()
+                        st.session_state.cookies_saved = True
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
 
     with tab2:
-       
         email = st.text_input("Email", key="s_email")
         password = st.text_input("Password", type="password", key="s_pass")
 
         if st.button("Signup"):
             uid, err = signup(email, password)
             if uid:
-                st.session_state.user_id = uid
-                cookies["user_id"] = uid
-                if not st.session_state.cookies_saved:
-                    cookies.save()
-                    st.session_state.cookies_saved = True
                 st.session_state.signup_success = True
                 st.rerun()
             else:
                 st.error(err or "User already exists")
-
-
 
     st.stop()
 print("User ID in session:", st.session_state.user_id)

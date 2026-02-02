@@ -1,2 +1,6 @@
 .env
+<<<<<<< HEAD
+=======
+".streamlit/secrets.toml" 
+>>>>>>> 34c72be (Ignore Streamlit secrets)
 .streamlit/secrets.toml
